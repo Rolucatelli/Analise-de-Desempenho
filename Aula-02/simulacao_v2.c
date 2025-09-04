@@ -36,7 +36,7 @@ double min(double a, double b)
     return a < b ? a : b;
 }
 
-void inicial_little(medida_little *medidas)
+void inicia_little(medida_little *medidas)
 {
     medidas->tempo_anterior = 0.0;
     medidas->qt_requisicoes = 0.0;
@@ -56,9 +56,9 @@ void main()
     /**
      * iniciando variaveis de little
      */
-    inicial_little(&E_N);
-    inicial_little(&E_W_chegadas);
-    inicial_little(&E_W_saidas);
+    inicia_little(&E_N);
+    inicia_little(&E_W_chegadas);
+    inicia_little(&E_W_saidas);
 
     // inicio
     double tempo_decorrido = 0.0; // 0 segundos
@@ -113,13 +113,10 @@ void main()
     {
         tempo_decorrido = fila ? min(proxima_requisicao, tempo_servico) : proxima_requisicao;
 
-        // printf("tempo_decorido: %lF\n", tempo_decorrido);
-
         // tratando os eventos da simulacao:
         if (tempo_decorrido == proxima_requisicao)
         {
             // ACONTECE UMA CHEGADA
-            // printf("chegada: %lF\n", tempo_decorrido);
 
             fila++;
             max_fila = fila > max_fila ? fila : max_fila;
@@ -150,7 +147,6 @@ void main()
         else
         {
             // ACONTECE UMA SAIDA
-            // printf("saida: %lF\n", tempo_decorrido);
 
             fila--;
             if (fila)
@@ -173,8 +169,10 @@ void main()
             E_W_saidas.qt_requisicoes++;
             E_W_saidas.tempo_anterior = tempo_decorrido;
         }
-        // printf("fila: %ld\n========================\n", fila);
     }
+    E_W_chegadas.soma_area += (tempo_decorrido - E_W_chegadas.tempo_anterior) * E_W_chegadas.qt_requisicoes;
+    E_W_saidas.soma_area += (tempo_decorrido - E_W_saidas.tempo_anterior) * E_W_saidas.qt_requisicoes;
+
     printf("\n===============================\n");
     printf("     Metricas e validacoes     \n");
     printf("===============================\n");
@@ -195,7 +193,7 @@ void main()
     printf("E[N]: %lF\n", E_N_final);
     printf("E[W]: %lF\n", E_W_final);
     printf("lambda: %lF\n", lambda);
-    printf("Erro little: %lF\n", erro_little);
+    printf("Erro little: %.20lF\n", erro_little);
 
     printf("\n===============================\n");
     printf("          Ocupacao\n");
