@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include <string.h>
 
 #define MINUTOS *60
 #define HORAS *60 MINUTOS
@@ -43,9 +44,49 @@ void inicia_little(medida_little *medidas)
     medidas->soma_area = 0;
 }
 
-void main()
+void fprint_metrics(FILE *file, medida_little E_N, medida_little E_W_chegadas, medida_little E_W_saidas, double tempo_decorrido)
+{
+    double E_N_final = E_N.soma_area / tempo_decorrido;
+    double E_W_final = (E_W_chegadas.soma_area - E_W_saidas.soma_area) / E_W_chegadas.qt_requisicoes;
+    double lambda = (E_W_chegadas.qt_requisicoes / tempo_decorrido);
+    double erro_little = E_N_final - lambda * E_W_final;
+
+    fprintf(file, "%.2lF,%.10lF,%.10lF,%.10lF,%.20lF\n", tempo_decorrido, E_N_final, E_W_final, lambda, erro_little);
+}
+
+int main(int argc, char *argv[])
 {
     srand(time(NULL));
+    /*------------------------------------*/
+    // Abrindo arquivo do relatorio
+    char path[256] = "./exe/relatorios/", nome_arq[256];
+    if (argc < 2)
+    {
+        printf("Digite o nome do relatorio: ");
+        scanf("%s", nome_arq);
+    }
+    else
+    {
+        strcpy(nome_arq, argv[1]);
+    }
+
+    int len = strlen(nome_arq);
+    // Adiciona ".csv" apenas se não houver extensão
+    if (len < 4 || strcmp(&nome_arq[len - 4], ".csv") != 0)
+    {
+        strcat(nome_arq, ".csv");
+    }
+    strcat(path, nome_arq);
+    printf("%s\n", path);
+
+    FILE *out = fopen(path, "w+");
+    if (out == NULL)
+    {
+        printf("Erro ao abrir arquivo!\n");
+        exit(1);
+    }
+
+    /*------------------------------------*/
 
     /**
      * Declaracao little
@@ -88,8 +129,32 @@ void main()
     unsigned long int qtd_servicos = 0;
     double soma_tempo_servico = 0.0;
 
-    printf("Informe a media de tempo entre requisicoes: ");
-    scanf("%lF", &media_inter_requisicoes);
+    /*------------------------------------*/
+    // Lendo media_inter_requisicoes e media_inter_servicos
+    if (argc >= 3)
+    {
+        char *endptr1, *endptr2;
+        media_inter_requisicoes = strtod(argv[2], &endptr1);
+        if (argc >= 4)
+        {
+            media_tempo_servico = strtod(argv[3], &endptr2);
+        }
+        else
+        {
+            printf("Informe a media de tempo para atendimento: ");
+            scanf("%lF", &media_tempo_servico);
+        }
+    }
+    else
+    {
+        printf("Informe a media de tempo entre requisicoes: ");
+        scanf("%lF", &media_inter_requisicoes);
+
+        printf("Informe a media de tempo para atendimento: ");
+        scanf("%lF", &media_tempo_servico);
+    }
+
+    /*------------------------------------*/
 
     /*
         precisamos do valor do parametro l para gerar
@@ -99,9 +164,6 @@ void main()
 
     media_inter_requisicoes = 1.0 / media_inter_requisicoes;
 
-    printf("Informe a media de tempo para atendimento: ");
-    scanf("%lF", &media_tempo_servico);
-
     media_tempo_servico = 1.0 / media_tempo_servico;
 
     // gerando o tempo de chegada da primeira requisicao
@@ -109,9 +171,13 @@ void main()
 
     qtd_requisicoes++;
     soma_inter_requisicoes = proxima_requisicao;
+
+    double volta = 10.0;
+
+    fprintf(out, "Tempo decorrido,E[N],E[W],Lambda,Erro Little\n");
     while (tempo_decorrido < tempo_simulacao)
     {
-        tempo_decorrido = fila ? min(proxima_requisicao, tempo_servico) : proxima_requisicao;
+        tempo_decorrido = fila ? min(proxima_requisicao, min(tempo_servico, volta)) : min(proxima_requisicao, volta);
 
         // tratando os eventos da simulacao:
         if (tempo_decorrido == proxima_requisicao)
@@ -143,6 +209,23 @@ void main()
             E_W_chegadas.soma_area += (tempo_decorrido - E_W_chegadas.tempo_anterior) * E_W_chegadas.qt_requisicoes;
             E_W_chegadas.qt_requisicoes++;
             E_W_chegadas.tempo_anterior = tempo_decorrido;
+        }
+        else if (tempo_decorrido == volta)
+        {
+            // Calcula a área e printa no arquivo
+            E_N.soma_area += (tempo_decorrido - E_N.tempo_anterior) * E_N.qt_requisicoes;
+            E_N.tempo_anterior = tempo_decorrido;
+
+            E_W_chegadas.soma_area += (tempo_decorrido - E_W_chegadas.tempo_anterior) * E_W_chegadas.qt_requisicoes;
+            E_W_chegadas.tempo_anterior = tempo_decorrido;
+
+            E_W_saidas.soma_area += (tempo_decorrido - E_W_saidas.tempo_anterior) * E_W_saidas.qt_requisicoes;
+            E_W_saidas.tempo_anterior = tempo_decorrido;
+
+            // Printar no arquivo
+            fprint_metrics(out, E_N, E_W_chegadas, E_W_saidas, tempo_decorrido);
+
+            volta += 10.0;
         }
         else
         {
@@ -200,4 +283,5 @@ void main()
     printf("E[W]: %lF\n", E_W_final);
     printf("lambda: %lF\n", lambda);
     printf("Erro little: %.20lF\n", erro_little);
+    fclose(out);
 }

@@ -10,8 +10,10 @@
 double aleatorio()
 {
     double u = rand() / ((double)RAND_MAX + 1);
-    // limitando entre (0,1]
+    // u = [0,1)
+
     u = 1.0 - u;
+    // u = (0,1]
 
     return (u);
 }
